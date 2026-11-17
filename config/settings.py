@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from config.llm_settings import LlmSettings
+from config.qdrant_settings import QdrantSettings
 
 
 class Settings(BaseSettings):
@@ -18,3 +19,4 @@ class Settings(BaseSettings):
     )
 
     llm: LlmSettings = LlmSettings()
+    qdrant: QdrantSettings = QdrantSettings()

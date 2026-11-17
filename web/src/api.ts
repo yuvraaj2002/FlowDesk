@@ -9,6 +9,23 @@ export type ChatResponse = {
   guardrail_flags: string[];
 };
 
+export type SessionCreateResponse = {
+  session_id: string;
+};
+
+async function readError(response: Response): Promise<string> {
+  const detail = await response.text();
+  return detail || `Request failed (${response.status})`;
+}
+
+export async function createSession(): Promise<SessionCreateResponse> {
+  const response = await fetch(`${API_BASE}/sessions/new`);
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+  return response.json() as Promise<SessionCreateResponse>;
+}
+
 export async function sendChat(params: {
   sessionId: string;
   message: string;
@@ -25,8 +42,7 @@ export async function sendChat(params: {
   });
 
   if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || `Request failed (${response.status})`);
+    throw new Error(await readError(response));
   }
 
   return response.json() as Promise<ChatResponse>;

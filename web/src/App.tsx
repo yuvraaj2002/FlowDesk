@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { sendChat, type ChatResponse } from "./api";
+import { useEffect, useState, type FormEvent } from "react";
+import { createSession, sendChat, type ChatResponse } from "./api";
 import { applyTheme, getInitialTheme, type Theme } from "./theme";
 import "./App.css";
 
@@ -10,13 +10,10 @@ type Message = {
   meta?: Pick<ChatResponse, "trace_id" | "status" | "confidence" | "guardrail_flags">;
 };
 
-function newSessionId(): string {
-  return `sess_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
-}
-
 export default function App() {
-  const sessionId = useMemo(() => newSessionId(), []);
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [accountId, setAccountId] = useState("acc_1042");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -27,14 +24,34 @@ export default function App() {
     applyTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    void startNewSession();
+  }, []);
+
   function toggleTheme() {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  }
+
+  async function startNewSession() {
+    setSessionLoading(true);
+    setError(null);
+    try {
+      const data = await createSession();
+      setSessionId(data.session_id);
+      setMessages([]);
+      setInput("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create session");
+      setSessionId(null);
+    } finally {
+      setSessionLoading(false);
+    }
   }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     const message = input.trim();
-    if (!message || loading) return;
+    if (!message || loading || !sessionId) return;
 
     setError(null);
     setInput("");
@@ -77,6 +94,13 @@ export default function App() {
         <div>
           <p className="eyebrow">FlowDesk</p>
           <h1>Support Copilot</h1>
+          <p className="session-id">
+            {sessionLoading
+              ? "Starting session…"
+              : sessionId
+                ? `Session ${sessionId}`
+                : "No session"}
+          </p>
         </div>
         <div className="header-actions">
           <label className="account">
@@ -87,6 +111,14 @@ export default function App() {
               placeholder="acc_1042"
             />
           </label>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={() => void startNewSession()}
+            disabled={sessionLoading || loading}
+          >
+            New Session
+          </button>
           <button
             type="button"
             className="theme-toggle"
@@ -130,9 +162,9 @@ export default function App() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="How do I set up a delay step between two emails?"
           rows={3}
-          disabled={loading}
+          disabled={loading || sessionLoading || !sessionId}
         />
-        <button type="submit" disabled={loading || !input.trim()}>
+        <button type="submit" disabled={loading || sessionLoading || !sessionId || !input.trim()}>
           Send
         </button>
       </form>

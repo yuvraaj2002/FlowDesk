@@ -37,6 +37,13 @@
   font-weight: 650;
 }
 
+.session-id {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 .account {
   display: grid;
   gap: 0.25rem;

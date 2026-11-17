@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class ChatRouter:
-    """`/chat` and session stubs backed by Ollama."""
+    """`/chat` backed by Ollama."""
 
     def __init__(
         self,
@@ -40,11 +40,6 @@ class ChatRouter:
             self.chat,
             methods=["POST"],
             response_model=ChatResponse,
-        )
-        self._router.add_api_route(
-            "/sessions/{session_id}",
-            self.get_session,
-            methods=["GET"],
         )
 
     async def chat(self, body: ChatRequest) -> ChatResponse:
@@ -74,7 +69,3 @@ class ChatRouter:
             confidence=Confidence.MEDIUM,
             guardrail_flags=["ollama_direct"],
         )
-
-    async def get_session(self, session_id: str) -> dict:
-        """Conversation history stub — empty until session store exists."""
-        return {"session_id": session_id, "messages": []}
