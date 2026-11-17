@@ -1,0 +1,19 @@
+# Single source of ground truth for FlowDesk facts (synthetic).
+# Docs, changelogs, and eval labels should stay consistent with this file.
+
+facts:
+  webhook_timeout_seconds:
+    history:
+      - {value: 10, from: 2025-01-01, doc_version: v1}
+      - {value: 10, from: 2025-09-01, doc_version: v2}
+      - {value: 30, from: 2026-06-01, doc_version: v3, changelog: CL-2026-06-01}
+
+  starter_contact_limit:
+    history:
+      - {value: 1000, from: 2025-01-01}
+      - {value: 2500, from: 2025-09-15, changelog: CL-2025-09-15}
+
+  delay_step_max_days:
+    history:
+      - {value: 30, from: 2025-01-01, doc_version: v1}
+      - {value: 90, from: 2026-06-01, doc_version: v3, changelog: CL-2026-06-01}

@@ -37,22 +37,89 @@ FlowDesk is a portfolio build that treats usefulness and security as the same pr
 | **Contain injection** | Resist attacks planted in tickets and docs; measure attack success rate |
 | **Full traces** | Retrieval, agent steps, tools, guardrails, and approvals for every request |
 
-## Stack (planned)
+## Architecture (current)
 
-| Layer | Choice |
+Request path today: UI creates a session, sends a chat turn to FastAPI, FastAPI calls local Ollama with a system prompt. Qdrant and `data/` exist but are **not wired into retrieval yet**.
+
+```mermaid
+flowchart LR
+  subgraph UI["React UI · Vite"]
+    Chat["Chat + New Session + theme"]
+  end
+
+  subgraph API["FastAPI"]
+    NewSess["GET /sessions/new"]
+    ChatEP["POST /chat"]
+    Health["GET /healthz"]
+    Prompt["ChatSystemPrompt"]
+    OllamaClient["OllamaClient"]
+  end
+
+  subgraph LLM["Local Ollama"]
+    Model["lfm2.5-1.2b-instruct"]
+  end
+
+  subgraph Stores["Local stores"]
+    Qdrant[("Qdrant · flowdesk_kb<br/>empty / not queried yet")]
+    Data["data/<br/>docs · changelog · tickets"]
+  end
+
+  Chat -->|"GET new session_id"| NewSess
+  Chat -->|"POST session_id + message + account_id"| ChatEP
+  ChatEP --> Prompt
+  ChatEP --> OllamaClient
+  OllamaClient --> Model
+  Model -->|"answer_markdown"| ChatEP
+  ChatEP --> Chat
+  Health -.->|"ping"| Qdrant
+  Data -.->|"ingest scripts · later"| Qdrant
+  Qdrant -.->|"search_docs / search_tickets · later"| ChatEP
+```
+
+### Query sequence
+
+1. UI loads (or **New Session**) → `GET /sessions/new` → backend returns `sess_…`
+2. User sends a message → `POST /chat` with `{ session_id, message, account_id }`
+3. API renders `ChatSystemPrompt`, calls Ollama, returns `{ answer_markdown, status, confidence, trace_id, … }`
+4. UI shows the reply (citations / retrieval / tools not active yet)
+
+### Data ready for ingest (not in Qdrant yet)
+
+| Path | Role |
 |---|---|
-| API | FastAPI · LangGraph · Postgres |
-| Models | AWS Bedrock (Claude) · Titan embeddings |
-| Retrieval | Qdrant (dense + sparse) · local reranker |
-| Guardrails | Injection classifier · PII · output filters · approval gates |
-| UI | Next.js · Tailwind · shadcn/ui |
-| Eval | ~150 labelled cases · Promptfoo · CI smoke + full runs |
-| Ops | Docker Compose · Langfuse |
+| `data/docs/` | Versioned help docs (markdown + frontmatter) |
+| `data/changelog/` | Release notes used for freshness / conflicts |
+| `data/tickets/` | Synthetic tickets (`tickets.jsonl`) |
+| `data/product_truth.yaml` | Ground-truth facts for generation + evals |
+| `data/attacks/` | Planted injection payloads |
+| `data/db/` | Account scenario stubs for later Postgres tools |
+
+## Stack
+
+| Layer | Now | Later |
+|---|---|---|
+| UI | React (Vite) chat | Next.js · shadcn citations / approvals |
+| API | FastAPI · sessions · `/chat` | LangGraph agents · approvals · traces |
+| Models | Local Ollama | Bedrock Claude + embeddings |
+| Retrieval | Qdrant running (empty) | Hybrid search · rerank · ingest from `data/` |
+| Tools | — | Account / workflow read + approval-gated writes |
+| Ops | Docker Compose (Qdrant) | Postgres · Redis · Langfuse |
 
 ## Status
 
-Early scaffold. Product requirements stay local (not in this repo). Implementation follows milestones for data → retrieval → agents → guardrails → evals → UI.
+- Live: React UI ↔ FastAPI ↔ Ollama; server-issued sessions; local Qdrant up; seed `data/` for future ingest
+- Next: ingest scripts → Qdrant → retrieval in `/chat` → tools
+
+## Local run
+
+```bash
+make qdrant-up   # Qdrant on :6333
+make api         # FastAPI on :8000
+make web         # UI on :5173
+```
+
+Requires Ollama running locally with the configured model (see `.env.example`).
 
 ## License
 
-MIT — forthcoming with the first implementation commit.
+MIT

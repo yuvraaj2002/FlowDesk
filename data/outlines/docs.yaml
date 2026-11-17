@@ -1,0 +1,18 @@
+# Page outlines used later by generation scripts.
+pages:
+  - doc_id: workflows/webhook-actions
+    area: workflows
+    title: Webhook actions
+    versions: [v1, v2, v3]
+  - doc_id: workflows/delay-steps
+    area: workflows
+    title: Delay steps
+    versions: [v1, v3]
+  - doc_id: messaging/sending-limits
+    area: messaging
+    title: Email sending limits
+    versions: [v2, v3]
+  - doc_id: billing/plan-limits
+    area: billing
+    title: Plan limits
+    versions: [v2, v3]

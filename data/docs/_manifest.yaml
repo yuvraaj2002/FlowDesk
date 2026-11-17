@@ -1,0 +1,8 @@
+# Labels for deliberate doc problems (stale / conflicting / planted injection).
+pages:
+  - doc_id: workflows/webhook-actions
+    stale_versions: [v2]
+    notes: "v2 still says 10s timeout; v3 + changelog say 30s"
+  - doc_id: billing/plan-limits
+    conflicts_with: [messaging/sending-limits]
+    notes: "Plan page and messaging limits page disagree until changelog date is applied"

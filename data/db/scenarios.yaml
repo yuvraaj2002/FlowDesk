@@ -1,0 +1,8 @@
+# Known account failure stories for later DB seed + tool evals.
+# Not vector-store content; kept here with other synthetic data.
+
+scenarios:
+  - account_id: acc_1042
+    workflow_name: New Lead Nurture
+    error_code: TRIGGER_FILTER_MISMATCH
+    summary: Tag rename caused filter mismatch; workflow failed repeatedly on 2026-10-14.
