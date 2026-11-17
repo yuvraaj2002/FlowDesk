@@ -2,24 +2,57 @@
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #152033;
-  background:
-    radial-gradient(circle at top left, #dbe7f7 0%, transparent 40%),
-    linear-gradient(180deg, #f5f7fb 0%, #e9eef5 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --bg: #f5f7fb;
+  --bg-accent: #dbe7f7;
+  --bg-end: #e9eef5;
+  --text: #152033;
+  --muted: #5b6575;
+  --border: #d8dde6;
+  --input-border: #c9d0db;
+  --surface: #ffffff;
+  --user-surface: #eef3fb;
+  --user-border: #c7d4ea;
+  --meta: #6b7280;
+  --error: #b42318;
+  --accent: #1f3a5f;
+  --accent-text: #ffffff;
 }
 
-* {
-  box-sizing: border-box;
+:root[data-theme="dark"] {
+  --bg: #0f141d;
+  --bg-accent: #1a2740;
+  --bg-end: #121820;
+  --text: #e8edf5;
+  --muted: #9aa6b8;
+  --border: #2a3548;
+  --input-border: #3a465c;
+  --surface: #171e2a;
+  --user-surface: #1e2c44;
+  --user-border: #334866;
+  --meta: #8b97ab;
+  --error: #ff7b72;
+  --accent: #7eb0ff;
+  --accent-text: #0f141d;
 }
 
+html,
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, var(--bg-accent) 0%, transparent 40%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-end) 100%);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 #root {
@@ -30,4 +63,5 @@ button,
 input,
 textarea {
   color: inherit;
+  background: var(--surface);
 }

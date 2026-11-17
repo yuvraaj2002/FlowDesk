@@ -1,5 +1,6 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { sendChat, type ChatResponse } from "./api";
+import { applyTheme, getInitialTheme, type Theme } from "./theme";
 import "./App.css";
 
 type Message = {
@@ -15,11 +16,20 @@ function newSessionId(): string {
 
 export default function App() {
   const sessionId = useMemo(() => newSessionId(), []);
+  const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
   const [accountId, setAccountId] = useState("acc_1042");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -68,19 +78,31 @@ export default function App() {
           <p className="eyebrow">FlowDesk</p>
           <h1>Support Copilot</h1>
         </div>
-        <label className="account">
-          Account
-          <input
-            value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-            placeholder="acc_1042"
-          />
-        </label>
+        <div className="header-actions">
+          <label className="account">
+            Account
+            <input
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              placeholder="acc_1042"
+            />
+          </label>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+          >
+            {theme === "light" ? "Dark" : "Light"}
+          </button>
+        </div>
       </header>
 
       <main className="chat">
         {messages.length === 0 && (
-          <p className="empty">Ask a support question. Responses come from the FastAPI `/chat` stub for now.</p>
+          <p className="empty">
+            Ask a support question. Answers come from local Ollama for now (no retrieval yet).
+          </p>
         )}
 
         {messages.map((msg) => (

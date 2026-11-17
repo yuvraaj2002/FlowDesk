@@ -1,49 +1,80 @@
-"""Chat endpoints — static stub until retrieval / agents land."""
+"""Chat HTTP routes."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+import logging
 
-from app.schemas.chat import (
-    AnswerStatus,
-    ChatRequest,
-    ChatResponse,
-    Citation,
-    Confidence,
-)
+import httpx
+from fastapi import APIRouter, HTTPException
 
-router = APIRouter(tags=["chat"])
+from app.llm.ollama import OllamaClient
+from app.prompts.chat_system import ChatSystemPrompt
+from app.schemas.answer_status import AnswerStatus
+from app.schemas.chat_request import ChatRequest
+from app.schemas.chat_response import ChatResponse
+from app.schemas.confidence import Confidence
 
-_STATIC_ANSWER = (
-    "This is a **static stub** from the FlowDesk Support Copilot API. "
-    "Retrieval, tools, and the LangGraph orchestrator are not wired yet. "
-    "Your message was received and a real answer will replace this soon."
-)
+logger = logging.getLogger(__name__)
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat(body: ChatRequest) -> ChatResponse:
-    """Run one turn. Returns a fixed Answer-shaped payload for now."""
-    return ChatResponse(
-        session_id=body.session_id,
-        answer_markdown=_STATIC_ANSWER,
-        citations=[
-            Citation(
-                n=1,
-                chunk_id="stub_chunk_0001",
-                doc_id="meta/static-stub",
-                version="v0",
+class ChatRouter:
+    """`/chat` and session stubs backed by Ollama."""
+
+    def __init__(
+        self,
+        ollama_client: OllamaClient | None = None,
+        system_prompt: ChatSystemPrompt | None = None,
+    ) -> None:
+        self._ollama = ollama_client or OllamaClient()
+        self._system_prompt = system_prompt or ChatSystemPrompt()
+        self._router = APIRouter(tags=["chat"])
+        self._register_routes()
+
+    @property
+    def router(self) -> APIRouter:
+        return self._router
+
+    def _register_routes(self) -> None:
+        self._router.add_api_route(
+            "/chat",
+            self.chat,
+            methods=["POST"],
+            response_model=ChatResponse,
+        )
+        self._router.add_api_route(
+            "/sessions/{session_id}",
+            self.get_session,
+            methods=["GET"],
+        )
+
+    async def chat(self, body: ChatRequest) -> ChatResponse:
+        """Run one turn through the local Ollama model."""
+        system_prompt = self._system_prompt.render(account_id=body.account_id)
+
+        try:
+            answer = await self._ollama.complete(
+                system_prompt=system_prompt,
+                user_message=body.message,
+                account_id=body.account_id,
             )
-        ],
-        conflict_notes=[],
-        status=AnswerStatus.ANSWERED,
-        confidence=Confidence.LOW,
-        proposed_actions=[],
-        guardrail_flags=["static_stub"],
-    )
+        except httpx.HTTPError as exc:
+            logger.exception("Ollama request failed")
+            raise HTTPException(
+                status_code=502,
+                detail=f"Ollama request failed: {exc}",
+            ) from exc
+        except RuntimeError as exc:
+            logger.exception("Ollama returned an invalid response")
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+        return ChatResponse(
+            session_id=body.session_id,
+            answer_markdown=answer,
+            status=AnswerStatus.ANSWERED,
+            confidence=Confidence.MEDIUM,
+            guardrail_flags=["ollama_direct"],
+        )
 
-@router.get("/sessions/{session_id}")
-async def get_session(session_id: str) -> dict:
-    """Conversation history stub — empty until session store exists."""
-    return {"session_id": session_id, "messages": []}
+    async def get_session(self, session_id: str) -> dict:
+        """Conversation history stub — empty until session store exists."""
+        return {"session_id": session_id, "messages": []}
