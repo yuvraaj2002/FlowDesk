@@ -1,0 +1,145 @@
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  border-bottom: 1px solid #d8dde6;
+  padding-bottom: 0.75rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5b6575;
+}
+
+.header h1 {
+  margin: 0.15rem 0 0;
+  font-size: 1.4rem;
+  font-weight: 650;
+}
+
+.account {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #5b6575;
+}
+
+.account input {
+  min-width: 10rem;
+  border: 1px solid #c9d0db;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+
+.empty,
+.pending {
+  color: #5b6575;
+  margin: 0;
+}
+
+.bubble {
+  border: 1px solid #d8dde6;
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  background: #fff;
+}
+
+.bubble.user {
+  background: #eef3fb;
+  border-color: #c7d4ea;
+}
+
+.role {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #5b6575;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.content {
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.meta {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.error {
+  color: #b42318;
+  margin: 0;
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.65rem;
+  align-items: end;
+  border-top: 1px solid #d8dde6;
+  padding-top: 0.85rem;
+}
+
+.composer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5rem;
+  border: 1px solid #c9d0db;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+  line-height: 1.4;
+}
+
+.composer button {
+  border: none;
+  border-radius: 10px;
+  background: #1f3a5f;
+  color: #fff;
+  padding: 0.7rem 1.1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.composer button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .composer {
+    grid-template-columns: 1fr;
+  }
+}
