@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from config.embed_settings import EmbedSettings
 from config.llm_settings import LlmSettings
 from config.qdrant_settings import QdrantSettings
 
@@ -20,3 +21,4 @@ class Settings(BaseSettings):
 
     llm: LlmSettings = LlmSettings()
     qdrant: QdrantSettings = QdrantSettings()
+    embed: EmbedSettings = EmbedSettings()

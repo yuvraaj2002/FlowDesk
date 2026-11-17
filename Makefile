@@ -1,4 +1,4 @@
-.PHONY: dev api web test lint qdrant-up qdrant-down qdrant-logs
+.PHONY: dev api web test lint ingest qdrant-up qdrant-down qdrant-logs
 
 dev: ## run API + UI (two terminals recommended: make api / make web)
 	@echo "Use: make api  (terminal 1) and  make web  (terminal 2)"
@@ -13,7 +13,10 @@ test:
 	uv run pytest -q
 
 lint:
-	uv run ruff check app config tests
+	uv run ruff check app config ingest tests
+
+ingest:
+	uv run python -m ingest --source all
 
 qdrant-up:
 	docker compose up -d qdrant
