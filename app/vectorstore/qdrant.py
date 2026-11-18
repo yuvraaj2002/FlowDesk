@@ -102,3 +102,33 @@ class QdrantStore:
             exact=True,
         )
         return int(result.count)
+
+    def search(
+        self,
+        vector: list[float],
+        *,
+        limit: int = 8,
+        score_threshold: float | None = None,
+    ) -> list[dict[str, Any]]:
+        """Dense cosine search. Returns score + payload per hit."""
+        if not self.collection_exists():
+            return []
+
+        response = self._ensure_client().query_points(
+            collection_name=self.collection_name,
+            query=vector,
+            limit=limit,
+            score_threshold=score_threshold,
+            with_payload=True,
+        )
+        hits: list[dict[str, Any]] = []
+        for point in response.points:
+            payload = dict(point.payload or {})
+            hits.append(
+                {
+                    "id": str(point.id),
+                    "score": float(point.score),
+                    "payload": payload,
+                }
+            )
+        return hits

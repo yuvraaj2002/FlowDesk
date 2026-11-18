@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { createSession, sendChat, type ChatResponse } from "./api";
+import { createSession, sendChat, type ChatResponse, type Citation } from "./api";
 import { applyTheme, getInitialTheme, type Theme } from "./theme";
 import "./App.css";
 
@@ -8,6 +8,7 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   meta?: Pick<ChatResponse, "trace_id" | "status" | "confidence" | "guardrail_flags">;
+  citations?: Citation[];
 };
 
 export default function App() {
@@ -79,6 +80,7 @@ export default function App() {
             confidence: data.confidence,
             guardrail_flags: data.guardrail_flags,
           },
+          citations: data.citations ?? [],
         },
       ]);
     } catch (err) {
@@ -133,7 +135,7 @@ export default function App() {
       <main className="chat">
         {messages.length === 0 && (
           <p className="empty">
-            Ask a support question. Answers come from local Ollama for now (no retrieval yet).
+            Ask a support question. Answers are grounded in retrieved docs via dense RAG + Ollama.
           </p>
         )}
 
@@ -141,6 +143,18 @@ export default function App() {
           <article key={msg.id} className={`bubble ${msg.role}`}>
             <p className="role">{msg.role === "user" ? "You" : "Copilot"}</p>
             <div className="content">{msg.content}</div>
+            {msg.citations && msg.citations.length > 0 && (
+              <ul className="citations">
+                {msg.citations.map((cite) => (
+                  <li key={`${cite.n}-${cite.chunk_id}`}>
+                    [{cite.n}] {cite.doc_id ?? cite.chunk_id}
+                    {cite.version ? ` ${cite.version}` : ""}
+                    {cite.source_type ? ` · ${cite.source_type}` : ""}
+                    {cite.score != null ? ` · ${cite.score.toFixed(2)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
             {msg.meta && (
               <p className="meta">
                 {msg.meta.status} · {msg.meta.confidence} · {msg.meta.trace_id}

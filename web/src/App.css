@@ -113,6 +113,17 @@
   line-height: 1.45;
 }
 
+.citations {
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 .meta {
   margin: 0.55rem 0 0;
   font-size: 0.75rem;

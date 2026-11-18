@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from config.embed_settings import EmbedSettings
 from config.llm_settings import LlmSettings
 from config.qdrant_settings import QdrantSettings
+from config.retrieval_settings import RetrievalSettings
 
 
 class Settings(BaseSettings):
@@ -22,3 +23,4 @@ class Settings(BaseSettings):
     llm: LlmSettings = LlmSettings()
     qdrant: QdrantSettings = QdrantSettings()
     embed: EmbedSettings = EmbedSettings()
+    retrieval: RetrievalSettings = RetrievalSettings()

@@ -55,3 +55,8 @@ class HuggingFaceEmbedder:
             convert_to_numpy=True,
         )
         return [vector.tolist() for vector in vectors]
+
+    def embed_query(self, text: str) -> list[float]:
+        """Embed a single search query (same model/space as documents)."""
+        vectors = self.embed_documents([text])
+        return vectors[0]

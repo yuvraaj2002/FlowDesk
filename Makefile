@@ -1,4 +1,4 @@
-.PHONY: dev api web test lint ingest qdrant-up qdrant-down qdrant-logs
+.PHONY: dev api web test lint ingest retrieve qdrant-up qdrant-down qdrant-logs
 
 dev: ## run API + UI (two terminals recommended: make api / make web)
 	@echo "Use: make api  (terminal 1) and  make web  (terminal 2)"
@@ -17,6 +17,9 @@ lint:
 
 ingest:
 	uv run python -m ingest --source all
+
+retrieve:
+	uv run python -m app.retrieval --query "$(QUERY)" $(if $(K),--top-k $(K),)
 
 qdrant-up:
 	docker compose up -d qdrant

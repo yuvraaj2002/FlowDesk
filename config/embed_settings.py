@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class EmbedSettings(BaseSettings):
-    """Dense embedding model used for ingest and (later) query."""
+    """Dense embedding model used for ingest and query-time retrieval."""
 
     model_config = SettingsConfigDict(env_prefix="EMBED__", extra="ignore")
 
