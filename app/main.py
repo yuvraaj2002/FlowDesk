@@ -10,6 +10,7 @@ from app.api.health import HealthRouter
 from app.api.sessions import SessionsRouter
 from app.rag.service import RagService
 from app.retrieval.retriever import DenseRetriever
+from app.router.scope import ScopeRouter
 from app.vectorstore.qdrant import QdrantStore
 from config.settings import Settings
 
@@ -21,7 +22,12 @@ class Application:
         self._settings = Settings()
         self._qdrant = QdrantStore(self._settings)
         self._retriever = DenseRetriever(settings=self._settings, store=self._qdrant)
-        self._rag = RagService(settings=self._settings, retriever=self._retriever)
+        self._scope_router = ScopeRouter(self._settings)
+        self._rag = RagService(
+            settings=self._settings,
+            retriever=self._retriever,
+            scope_router=self._scope_router,
+        )
         self.app = FastAPI(
             title="FlowDesk Support Copilot",
             version="0.1.0",

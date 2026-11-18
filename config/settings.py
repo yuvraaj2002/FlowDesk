@@ -8,6 +8,7 @@ from config.embed_settings import EmbedSettings
 from config.llm_settings import LlmSettings
 from config.qdrant_settings import QdrantSettings
 from config.retrieval_settings import RetrievalSettings
+from config.router_settings import RouterSettings
 
 
 class Settings(BaseSettings):
@@ -24,3 +25,4 @@ class Settings(BaseSettings):
     qdrant: QdrantSettings = QdrantSettings()
     embed: EmbedSettings = EmbedSettings()
     retrieval: RetrievalSettings = RetrievalSettings()
+    router: RouterSettings = RouterSettings()

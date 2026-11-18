@@ -9,6 +9,8 @@ from app.prompts.chat_system import ChatSystemPrompt
 from app.rag.context import RagContextBuilder
 from app.retrieval.models import RetrievalResult
 from app.retrieval.retriever import DenseRetriever
+from app.router.models import ScopeDecision
+from app.router.scope import ScopeRouter
 from app.schemas.answer_status import AnswerStatus
 from app.schemas.chat_response import ChatResponse
 from app.schemas.confidence import Confidence
@@ -17,7 +19,7 @@ from config.settings import Settings
 
 
 class RagService:
-    """Minimal working RAG: dense retrieve, then answer from evidence only."""
+    """Scope gate → dense retrieve → answer from evidence only."""
 
     def __init__(
         self,
@@ -26,6 +28,7 @@ class RagService:
         ollama_client: OllamaClient | None = None,
         system_prompt: ChatSystemPrompt | None = None,
         context_builder: RagContextBuilder | None = None,
+        scope_router: ScopeRouter | None = None,
     ) -> None:
         self._settings = settings or Settings()
         self._retrieval: RetrievalSettings = self._settings.retrieval
@@ -33,6 +36,7 @@ class RagService:
         self._ollama = ollama_client or OllamaClient(self._settings)
         self._system_prompt = system_prompt or ChatSystemPrompt()
         self._context = context_builder or RagContextBuilder()
+        self._scope_router = scope_router or ScopeRouter(self._settings)
 
     async def answer(
         self,
@@ -41,9 +45,37 @@ class RagService:
         message: str,
         account_id: str | None = None,
     ) -> ChatResponse:
+        if self._scope_router.enabled:
+            route = await self._scope_router.route(message)
+            min_confidence = self._settings.router.min_confidence
+            if (
+                route.decision == ScopeDecision.OUT_OF_SCOPE
+                and route.confidence >= min_confidence
+            ):
+                return ChatResponse(
+                    session_id=session_id,
+                    answer_markdown=(
+                        "I'm FlowDesk Support Copilot, so I only help with FlowDesk "
+                        "product questions — docs, workflows, messaging, billing, "
+                        "tickets, and account issues.\n\n"
+                        "Rephrase around something in that space, or hand this off "
+                        "to a human agent."
+                    ),
+                    status=AnswerStatus.REFUSED,
+                    confidence=Confidence.HIGH,
+                    guardrail_flags=[
+                        "router_out_of_scope",
+                        f"router_model:{route.model}",
+                        f"router_confidence:{route.confidence:.3f}",
+                    ],
+                    citations=[],
+                )
+
         retrieval = await asyncio.to_thread(self._retriever.retrieve, message)
         citations = self._context.build_citations(retrieval.hits)
         status, confidence, flags = self._status_from_retrieval(retrieval)
+        if self._scope_router.enabled:
+            flags = ["router_in_scope", *flags]
 
         if status in {AnswerStatus.REFUSED, AnswerStatus.ESCALATE} and not retrieval.hits:
             return ChatResponse(

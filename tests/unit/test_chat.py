@@ -10,11 +10,26 @@ from fastapi.testclient import TestClient
 from app.main import app, application
 from app.rag.service import RagService
 from app.retrieval.models import RetrievalHit, RetrievalResult
+from app.router.models import ScopeDecision, ScopeRouteResult
 from app.schemas.answer_status import AnswerStatus
 from app.schemas.chat_response import ChatResponse
 from app.schemas.citation import Citation
 from app.schemas.confidence import Confidence
 from config.settings import Settings
+
+
+def _in_scope_router() -> MagicMock:
+    router = MagicMock()
+    router.enabled = True
+    router.route = AsyncMock(
+        return_value=ScopeRouteResult(
+            decision=ScopeDecision.IN_SCOPE,
+            confidence=0.8,
+            probabilities={"in_scope": 0.9, "out_of_scope": 0.1},
+            model="tev1:0.8b",
+        )
+    )
+    return router
 
 
 class TestChatApi:
@@ -122,6 +137,7 @@ class TestRagService:
             settings=Settings(),
             retriever=retriever,
             ollama_client=ollama,
+            scope_router=_in_scope_router(),
         )
         result = asyncio.run(
             service.answer(
@@ -134,6 +150,7 @@ class TestRagService:
         assert result.status == AnswerStatus.ANSWERED
         assert result.confidence == Confidence.HIGH
         assert result.citations[0].chunk_id == "chk_1"
+        assert "router_in_scope" in result.guardrail_flags
         assert "rag_dense" in result.guardrail_flags
         kwargs = ollama.complete.await_args.kwargs
         assert "Evidence" in kwargs["system_prompt"]
@@ -154,6 +171,7 @@ class TestRagService:
             settings=Settings(),
             retriever=retriever,
             ollama_client=ollama,
+            scope_router=_in_scope_router(),
         )
         result = asyncio.run(
             service.answer(
