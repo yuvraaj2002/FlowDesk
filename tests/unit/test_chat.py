@@ -41,6 +41,7 @@ def _safe_guard() -> MagicMock:
         score=0.01,
         model="protectai/deberta-v3-base-prompt-injection-v2",
     )
+    guard.filter_hits.side_effect = lambda hits: list(hits)
     return guard
 
 

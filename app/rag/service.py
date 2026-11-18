@@ -8,7 +8,7 @@ from app.guardrails.prompt_guard import PromptGuardClassifier
 from app.llm.ollama import OllamaClient
 from app.prompts.chat_system import ChatSystemPrompt
 from app.rag.context import RagContextBuilder
-from app.retrieval.models import RetrievalResult
+from app.retrieval.models import RetrievalHit
 from app.retrieval.retriever import DenseRetriever
 from app.router.models import ScopeDecision
 from app.router.scope import ScopeRouter
@@ -20,7 +20,7 @@ from config.settings import Settings
 
 
 class RagService:
-    """L1 injection gate → scope gate → dense retrieve → grounded answer."""
+    """L1 input gate → scope gate → retrieve → L1 context filter → answer."""
 
     def __init__(
         self,
@@ -86,10 +86,11 @@ class RagService:
                 )
 
         retrieval = await asyncio.to_thread(self._retriever.retrieve, message)
-        citations = self._context.build_citations(retrieval.hits)
-        status = self._status_from_retrieval(retrieval)
+        hits = await asyncio.to_thread(self._prompt_guard.filter_hits, retrieval.hits)
+        citations = self._context.build_citations(hits)
+        status = self._status_from_hits(hits)
 
-        if status in {AnswerStatus.REFUSED, AnswerStatus.ESCALATE} and not retrieval.hits:
+        if status in {AnswerStatus.REFUSED, AnswerStatus.ESCALATE} and not hits:
             return ChatResponse(
                 session_id=session_id,
                 answer_markdown=(
@@ -102,7 +103,7 @@ class RagService:
                 citations=citations,
             )
 
-        evidence = self._context.build_evidence_block(retrieval.hits)
+        evidence = self._context.build_evidence_block(hits)
         system_prompt = self._system_prompt.render(
             account_id=account_id,
             evidence=evidence,
@@ -120,11 +121,11 @@ class RagService:
             citations=citations,
         )
 
-    def _status_from_retrieval(self, retrieval: RetrievalResult) -> AnswerStatus:
-        if not retrieval.hits:
+    def _status_from_hits(self, hits: list[RetrievalHit]) -> AnswerStatus:
+        if not hits:
             return AnswerStatus.ESCALATE
 
-        top = retrieval.hits[0].score
+        top = hits[0].score
         threshold = self._retrieval.score_threshold
         if threshold is not None and top < threshold:
             return AnswerStatus.REFUSED

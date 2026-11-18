@@ -1,17 +1,20 @@
-"""L1 user-input injection / jailbreak classifier (Prompt Guard family)."""
+"""L1 injection / jailbreak classifier (Prompt Guard family)."""
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 from typing import Any
 
 from app.guardrails.models import InjectionScanResult
+from app.retrieval.models import RetrievalHit
 from config.guard_settings import GuardSettings
 from config.settings import Settings
 from ingest.device import DeviceDetector
 
 
 class PromptGuardClassifier:
-    """HF sequence classifier for direct jailbreak / injection on user turns."""
+    """HF sequence classifier for user turns and retrieved chunk text."""
 
     def __init__(
         self,
@@ -24,6 +27,7 @@ class PromptGuardClassifier:
         self._model: Any | None = None
         self._tokenizer: Any | None = None
         self._id2label: dict[int, str] = {}
+        self._infer_lock = Lock()
 
     @property
     def enabled(self) -> bool:
@@ -61,19 +65,21 @@ class PromptGuardClassifier:
         import torch
         from torch.nn.functional import softmax
 
-        inputs = tokenizer(
-            cleaned,
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
-            padding=True,
-        )
-        inputs = {key: value.to(self._device) for key, value in inputs.items()}
-        with torch.no_grad():
-            logits = model(**inputs).logits
-            probs = softmax(logits, dim=-1)[0]
+        # Shared HF weights are not thread-safe on GPU/MPS without a lock.
+        with self._infer_lock:
+            inputs = tokenizer(
+                cleaned,
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+                padding=True,
+            )
+            inputs = {key: value.to(self._device) for key, value in inputs.items()}
+            with torch.no_grad():
+                logits = model(**inputs).logits
+                probs = softmax(logits, dim=-1)[0]
+            label, score = self._malicious_signal(probs)
 
-        label, score = self._malicious_signal(probs)
         flagged = score >= self._guard.jailbreak_threshold and label != "BENIGN"
         return InjectionScanResult(
             flagged=flagged,
@@ -81,6 +87,24 @@ class PromptGuardClassifier:
             score=float(score),
             model=self._guard.model,
         )
+
+    def filter_hits(self, hits: list[RetrievalHit]) -> list[RetrievalHit]:
+        """Drop retrieved chunks the classifier flags as injection / jailbreak."""
+        if (
+            not self.enabled
+            or not self._guard.scan_retrieved
+            or not hits
+        ):
+            return list(hits)
+
+        workers = max(1, min(self._guard.scan_workers, len(hits)))
+
+        def _keep(hit: RetrievalHit) -> RetrievalHit | None:
+            return None if self.scan(hit.text).flagged else hit
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            kept = list(pool.map(_keep, hits))
+        return [hit for hit in kept if hit is not None]
 
     def _malicious_signal(self, probs: Any) -> tuple[str, float]:
         """Return the malicious label + score for the loaded model family."""
