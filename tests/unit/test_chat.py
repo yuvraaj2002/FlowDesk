@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 
+from app.guardrails.models import InjectionScanResult
 from app.main import app, application
 from app.rag.service import RagService
 from app.retrieval.models import RetrievalHit, RetrievalResult
@@ -14,7 +15,6 @@ from app.router.models import ScopeDecision, ScopeRouteResult
 from app.schemas.answer_status import AnswerStatus
 from app.schemas.chat_response import ChatResponse
 from app.schemas.citation import Citation
-from app.schemas.confidence import Confidence
 from config.settings import Settings
 
 
@@ -30,6 +30,18 @@ def _in_scope_router() -> MagicMock:
         )
     )
     return router
+
+
+def _safe_guard() -> MagicMock:
+    guard = MagicMock()
+    guard.enabled = True
+    guard.scan.return_value = InjectionScanResult(
+        flagged=False,
+        label="SAFE",
+        score=0.01,
+        model="protectai/deberta-v3-base-prompt-injection-v2",
+    )
+    return guard
 
 
 class TestChatApi:
@@ -56,16 +68,13 @@ class TestChatApi:
             session_id="sess_test_1",
             answer_markdown="Use a Delay step between the two email actions. [1]",
             status=AnswerStatus.ANSWERED,
-            confidence=Confidence.HIGH,
-            guardrail_flags=["rag_dense"],
+            block_reason=None,
             citations=[
                 Citation(
                     n=1,
-                    chunk_id="chk_delay",
                     doc_id="workflows/delay-steps",
-                    version="v3",
                     source_type="help_doc",
-                    score=0.88,
+                    scope="workflows",
                 )
             ],
         )
@@ -87,9 +96,11 @@ class TestChatApi:
         data = response.json()
         assert data["session_id"] == "sess_test_1"
         assert data["status"] == "answered"
+        assert data["block_reason"] is None
         assert data["trace_id"].startswith("tr_")
         assert "Delay step" in data["answer_markdown"]
-        assert "rag_dense" in data["guardrail_flags"]
+        assert "confidence" not in data
+        assert "guardrail_flags" not in data
         assert data["citations"][0]["doc_id"] == "workflows/delay-steps"
         mock_answer.assert_awaited_once()
         kwargs = mock_answer.await_args.kwargs
@@ -138,6 +149,7 @@ class TestRagService:
             retriever=retriever,
             ollama_client=ollama,
             scope_router=_in_scope_router(),
+            prompt_guard=_safe_guard(),
         )
         result = asyncio.run(
             service.answer(
@@ -148,10 +160,9 @@ class TestRagService:
         )
 
         assert result.status == AnswerStatus.ANSWERED
-        assert result.confidence == Confidence.HIGH
-        assert result.citations[0].chunk_id == "chk_1"
-        assert "router_in_scope" in result.guardrail_flags
-        assert "rag_dense" in result.guardrail_flags
+        assert result.block_reason is None
+        assert result.citations[0].doc_id == "workflows/delay-steps"
+        assert result.citations[0].scope == "workflows"
         kwargs = ollama.complete.await_args.kwargs
         assert "Evidence" in kwargs["system_prompt"]
         assert "Delay step" in kwargs["system_prompt"]
@@ -172,6 +183,7 @@ class TestRagService:
             retriever=retriever,
             ollama_client=ollama,
             scope_router=_in_scope_router(),
+            prompt_guard=_safe_guard(),
         )
         result = asyncio.run(
             service.answer(
@@ -181,6 +193,5 @@ class TestRagService:
         )
 
         assert result.status == AnswerStatus.ESCALATE
-        assert result.confidence == Confidence.LOW
-        assert "no_evidence" in result.guardrail_flags
+        assert result.block_reason is None
         ollama.complete.assert_not_awaited()

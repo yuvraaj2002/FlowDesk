@@ -2,20 +2,19 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export type Citation = {
   n: number;
-  chunk_id: string;
   doc_id?: string | null;
-  version?: string | null;
   source_type?: string | null;
-  score?: number | null;
+  scope?: string | null;
 };
+
+export type BlockReason = "out_of_scope" | "prompt_injection";
 
 export type ChatResponse = {
   session_id: string;
   trace_id: string;
   answer_markdown: string;
   status: "answered" | "partial" | "refused" | "escalate";
-  confidence: "high" | "medium" | "low";
-  guardrail_flags: string[];
+  block_reason: BlockReason | null;
   citations: Citation[];
 };
 

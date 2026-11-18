@@ -31,4 +31,5 @@ class TestRagContextBuilder:
         assert "heading=Timeout" in block
         assert citations[0].n == 1
         assert citations[0].doc_id == "workflows/webhook-actions"
-        assert citations[0].version == "v3"
+        assert citations[0].source_type == "help_doc"
+        assert citations[0].scope == "workflows"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
+from app.guardrails.prompt_guard import PromptGuardClassifier
 from app.llm.ollama import OllamaClient
 from app.prompts.chat_system import ChatSystemPrompt
 from app.rag.context import RagContextBuilder
@@ -12,14 +13,14 @@ from app.retrieval.retriever import DenseRetriever
 from app.router.models import ScopeDecision
 from app.router.scope import ScopeRouter
 from app.schemas.answer_status import AnswerStatus
+from app.schemas.block_reason import BlockReason
 from app.schemas.chat_response import ChatResponse
-from app.schemas.confidence import Confidence
 from config.retrieval_settings import RetrievalSettings
 from config.settings import Settings
 
 
 class RagService:
-    """Scope gate → dense retrieve → answer from evidence only."""
+    """L1 injection gate → scope gate → dense retrieve → grounded answer."""
 
     def __init__(
         self,
@@ -29,6 +30,7 @@ class RagService:
         system_prompt: ChatSystemPrompt | None = None,
         context_builder: RagContextBuilder | None = None,
         scope_router: ScopeRouter | None = None,
+        prompt_guard: PromptGuardClassifier | None = None,
     ) -> None:
         self._settings = settings or Settings()
         self._retrieval: RetrievalSettings = self._settings.retrieval
@@ -37,6 +39,7 @@ class RagService:
         self._system_prompt = system_prompt or ChatSystemPrompt()
         self._context = context_builder or RagContextBuilder()
         self._scope_router = scope_router or ScopeRouter(self._settings)
+        self._prompt_guard = prompt_guard or PromptGuardClassifier(self._settings)
 
     async def answer(
         self,
@@ -45,6 +48,22 @@ class RagService:
         message: str,
         account_id: str | None = None,
     ) -> ChatResponse:
+        if self._prompt_guard.enabled:
+            scan = await asyncio.to_thread(self._prompt_guard.scan, message)
+            if scan.flagged:
+                return ChatResponse(
+                    session_id=session_id,
+                    answer_markdown=(
+                        "I can't help with that request. It looks like a prompt "
+                        "injection or jailbreak attempt, so I stopped before "
+                        "retrieval.\n\n"
+                        "Ask a normal FlowDesk support question instead."
+                    ),
+                    status=AnswerStatus.REFUSED,
+                    block_reason=BlockReason.PROMPT_INJECTION,
+                    citations=[],
+                )
+
         if self._scope_router.enabled:
             route = await self._scope_router.route(message)
             min_confidence = self._settings.router.min_confidence
@@ -62,20 +81,13 @@ class RagService:
                         "to a human agent."
                     ),
                     status=AnswerStatus.REFUSED,
-                    confidence=Confidence.HIGH,
-                    guardrail_flags=[
-                        "router_out_of_scope",
-                        f"router_model:{route.model}",
-                        f"router_confidence:{route.confidence:.3f}",
-                    ],
+                    block_reason=BlockReason.OUT_OF_SCOPE,
                     citations=[],
                 )
 
         retrieval = await asyncio.to_thread(self._retriever.retrieve, message)
         citations = self._context.build_citations(retrieval.hits)
-        status, confidence, flags = self._status_from_retrieval(retrieval)
-        if self._scope_router.enabled:
-            flags = ["router_in_scope", *flags]
+        status = self._status_from_retrieval(retrieval)
 
         if status in {AnswerStatus.REFUSED, AnswerStatus.ESCALATE} and not retrieval.hits:
             return ChatResponse(
@@ -86,8 +98,7 @@ class RagService:
                     "with more product context."
                 ),
                 status=status,
-                confidence=confidence,
-                guardrail_flags=flags,
+                block_reason=None,
                 citations=citations,
             )
 
@@ -105,33 +116,19 @@ class RagService:
             session_id=session_id,
             answer_markdown=answer,
             status=status,
-            confidence=confidence,
-            guardrail_flags=flags,
+            block_reason=None,
             citations=citations,
         )
 
-    def _status_from_retrieval(
-        self,
-        retrieval: RetrievalResult,
-    ) -> tuple[AnswerStatus, Confidence, list[str]]:
-        flags = ["rag_dense"]
+    def _status_from_retrieval(self, retrieval: RetrievalResult) -> AnswerStatus:
         if not retrieval.hits:
-            flags.append("no_evidence")
-            return AnswerStatus.ESCALATE, Confidence.LOW, flags
+            return AnswerStatus.ESCALATE
 
         top = retrieval.hits[0].score
         threshold = self._retrieval.score_threshold
         if threshold is not None and top < threshold:
-            flags.append("below_score_threshold")
-            return AnswerStatus.REFUSED, Confidence.LOW, flags
+            return AnswerStatus.REFUSED
 
-        if top >= 0.75:
-            confidence = Confidence.HIGH
-        elif top >= 0.55:
-            confidence = Confidence.MEDIUM
-        else:
-            confidence = Confidence.LOW
-            flags.append("weak_top_score")
-
-        status = AnswerStatus.ANSWERED if confidence != Confidence.LOW else AnswerStatus.PARTIAL
-        return status, confidence, flags
+        if top < 0.55:
+            return AnswerStatus.PARTIAL
+        return AnswerStatus.ANSWERED

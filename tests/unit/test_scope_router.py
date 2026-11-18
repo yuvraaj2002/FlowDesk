@@ -5,12 +5,26 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
+from app.guardrails.models import InjectionScanResult
 from app.rag.service import RagService
 from app.retrieval.models import RetrievalHit, RetrievalResult
 from app.router.models import ScopeDecision, ScopeRouteResult
 from app.router.scope import ScopeRouter
 from app.schemas.answer_status import AnswerStatus
+from app.schemas.block_reason import BlockReason
 from config.settings import Settings
+
+
+def _safe_guard() -> MagicMock:
+    guard = MagicMock()
+    guard.enabled = True
+    guard.scan.return_value = InjectionScanResult(
+        flagged=False,
+        label="SAFE",
+        score=0.01,
+        model="protectai/deberta-v3-base-prompt-injection-v2",
+    )
+    return guard
 
 
 class TestScopeRouter:
@@ -62,6 +76,7 @@ class TestRagServiceRouterGate:
             retriever=retriever,
             ollama_client=ollama,
             scope_router=router,
+            prompt_guard=_safe_guard(),
         )
         result = asyncio.run(
             service.answer(
@@ -71,7 +86,7 @@ class TestRagServiceRouterGate:
         )
 
         assert result.status == AnswerStatus.REFUSED
-        assert "router_out_of_scope" in result.guardrail_flags
+        assert result.block_reason == BlockReason.OUT_OF_SCOPE
         retriever.retrieve.assert_not_called()
         ollama.complete.assert_not_awaited()
 
@@ -111,6 +126,7 @@ class TestRagServiceRouterGate:
             retriever=retriever,
             ollama_client=ollama,
             scope_router=router,
+            prompt_guard=_safe_guard(),
         )
         result = asyncio.run(
             service.answer(
@@ -120,7 +136,6 @@ class TestRagServiceRouterGate:
         )
 
         assert result.status == AnswerStatus.ANSWERED
-        assert "router_in_scope" in result.guardrail_flags
-        assert "rag_dense" in result.guardrail_flags
+        assert result.block_reason is None
         retriever.retrieve.assert_called_once()
         ollama.complete.assert_awaited_once()

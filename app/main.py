@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.chat import ChatRouter
 from app.api.health import HealthRouter
 from app.api.sessions import SessionsRouter
+from app.guardrails.prompt_guard import PromptGuardClassifier
 from app.rag.service import RagService
 from app.retrieval.retriever import DenseRetriever
 from app.router.scope import ScopeRouter
@@ -22,11 +23,13 @@ class Application:
         self._settings = Settings()
         self._qdrant = QdrantStore(self._settings)
         self._retriever = DenseRetriever(settings=self._settings, store=self._qdrant)
+        self._prompt_guard = PromptGuardClassifier(self._settings)
         self._scope_router = ScopeRouter(self._settings)
         self._rag = RagService(
             settings=self._settings,
             retriever=self._retriever,
             scope_router=self._scope_router,
+            prompt_guard=self._prompt_guard,
         )
         self.app = FastAPI(
             title="FlowDesk Support Copilot",

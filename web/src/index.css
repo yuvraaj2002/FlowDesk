@@ -1,43 +1,47 @@
 :root {
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-  line-height: 1.5;
+  font-family: "Source Sans 3", "Segoe UI", sans-serif;
+  line-height: 1.45;
   font-weight: 400;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --bg: #f5f7fb;
-  --bg-accent: #dbe7f7;
-  --bg-end: #e9eef5;
-  --text: #152033;
-  --muted: #5b6575;
-  --border: #d8dde6;
-  --input-border: #c9d0db;
-  --surface: #ffffff;
-  --user-surface: #eef3fb;
-  --user-border: #c7d4ea;
-  --meta: #6b7280;
-  --error: #b42318;
-  --accent: #1f3a5f;
-  --accent-text: #ffffff;
+  --bg: #e4e2db;
+  --bg-deep: #d2d0c8;
+  --ink: #1a1c19;
+  --muted: #5f645c;
+  --line: #c4c2b8;
+  --surface: #f4f3ee;
+  --surface-2: #fbfaf6;
+  --user: #1a1c19;
+  --user-text: #f4f3ee;
+  --assist: transparent;
+  --meta: #7a7f76;
+  --error: #8f2e22;
+  --accent: #2a5a4c;
+  --accent-text: #f2f8f5;
+  --shadow: 0 16px 44px rgba(26, 28, 25, 0.09);
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --display: "Fraunces", Georgia, serif;
 }
 
 :root[data-theme="dark"] {
-  --bg: #0f141d;
-  --bg-accent: #1a2740;
-  --bg-end: #121820;
-  --text: #e8edf5;
-  --muted: #9aa6b8;
-  --border: #2a3548;
-  --input-border: #3a465c;
-  --surface: #171e2a;
-  --user-surface: #1e2c44;
-  --user-border: #334866;
-  --meta: #8b97ab;
-  --error: #ff7b72;
-  --accent: #7eb0ff;
-  --accent-text: #0f141d;
+  --bg: #111210;
+  --bg-deep: #0a0b09;
+  --ink: #eeeae2;
+  --muted: #9a968c;
+  --line: #2a2924;
+  --surface: #181714;
+  --surface-2: #201e1a;
+  --user: #eeeae2;
+  --user-text: #141310;
+  --assist: transparent;
+  --meta: #868278;
+  --error: #ff8f7a;
+  --accent: #7bb9a4;
+  --accent-text: #0d1411;
+  --shadow: 0 20px 52px rgba(0, 0, 0, 0.5);
 }
 
 html,
@@ -45,10 +49,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  color: var(--text);
+  color: var(--ink);
   background:
-    radial-gradient(circle at top left, var(--bg-accent) 0%, transparent 40%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-end) 100%);
+    radial-gradient(ellipse 65% 42% at 8% -8%, rgba(42, 90, 76, 0.14), transparent 55%),
+    radial-gradient(ellipse 50% 36% at 100% 4%, rgba(90, 100, 110, 0.1), transparent 48%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
 }
 
 * {
@@ -63,5 +68,5 @@ button,
 input,
 textarea {
   color: inherit;
-  background: var(--surface);
+  font: inherit;
 }

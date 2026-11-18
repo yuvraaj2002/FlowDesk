@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from config.embed_settings import EmbedSettings
+from config.guard_settings import GuardSettings
 from config.llm_settings import LlmSettings
 from config.qdrant_settings import QdrantSettings
 from config.retrieval_settings import RetrievalSettings
@@ -26,3 +27,4 @@ class Settings(BaseSettings):
     embed: EmbedSettings = EmbedSettings()
     retrieval: RetrievalSettings = RetrievalSettings()
     router: RouterSettings = RouterSettings()
+    guard: GuardSettings = GuardSettings()

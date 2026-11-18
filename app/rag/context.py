@@ -34,17 +34,15 @@ class RagContextBuilder:
         citations: list[Citation] = []
         for index, hit in enumerate(hits, start=1):
             meta = hit.metadata
-            version = meta.get("version")
+            area = meta.get("area")
             citations.append(
                 Citation(
                     n=index,
-                    chunk_id=hit.chunk_id,
                     doc_id=str(meta["doc_id"]) if meta.get("doc_id") is not None else None,
-                    version=str(version) if version is not None else None,
                     source_type=(
                         str(meta["source_type"]) if meta.get("source_type") is not None else None
                     ),
-                    score=hit.score,
+                    scope=str(area) if area is not None else None,
                 )
             )
         return citations
