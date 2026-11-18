@@ -54,10 +54,10 @@ class RagService:
                 return ChatResponse(
                     session_id=session_id,
                     answer_markdown=(
-                        "I can't help with that request. It looks like a prompt "
-                        "injection or jailbreak attempt, so I stopped before "
-                        "retrieval.\n\n"
-                        "Ask a normal FlowDesk support question instead."
+                        "That request looks like an attempt to override how I work, "
+                        "so I won't process it.\n\n"
+                        "Ask a normal FlowDesk support question instead — docs, "
+                        "workflows, messaging, billing, tickets, or account issues."
                     ),
                     status=AnswerStatus.REFUSED,
                     block_reason=BlockReason.PROMPT_INJECTION,
